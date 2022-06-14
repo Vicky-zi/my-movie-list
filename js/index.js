@@ -1,34 +1,89 @@
 (function () {
 
-  const BASE_URL = 'https://movie-list.alphacamp.io/'
-  const INDEX_URL = BASE_URL + 'api/v1/movies/'
-  const POSTER_URL = BASE_URL + 'posters/'
-  const data = []
-
-  const movies = [] //電影總清單
+  const BASE_URL = 'https://movie-list.alphacamp.io/';
+  const INDEX_URL = BASE_URL + 'api/v1/movies/';
+  const POSTER_URL = BASE_URL + 'posters/';
+   //電影總清單
+  const data = [];
 
   //搜尋
-  const searchForm = document.getElementById('search')
-  const searchInput = document.getElementById('search-input')
+  const searchForm = document.getElementById('search');
+  const searchInput = document.getElementById('search-input');
 
 
   //分頁，每頁顯示 12 筆資料
-  const pagination = document.getElementById('pagination')
-  const ITEM_PER_PAGE = 12
-  let paginationData = []
+  const pagination = document.getElementById('pagination');
+  const ITEM_PER_PAGE = 12;
+  let paginationData = [];
+  //初始頁
+  let newpage = '1';
 
+  //預設顯示樣式
+  const cardMode = document.getElementById('cardImg');  
+  const listMode = document.getElementById('cardList');
+  const changList = document.getElementById('changList');
+  let viewMode = 'card';
+  let pageData = data;
+
+
+
+
+  //電影清單
+  const dataPanel = document.getElementById('data-panel')
+
+  axios.get(INDEX_URL)
+    .then((response) => {
+      data.push(...response.data.results)
+      getTotalPages(data)
+      displayDataList(data)
+      getPageData(newpage, data)
+    })
+    // 有錯誤時印出
+    .catch((err) => console.log(err))
+
+  //監聽按鈕 事件
+  dataPanel.addEventListener('click', (event) => {
+    if (event.target.matches('.btn-show-movie')) {
+      showMovie(event.target.dataset.id)
+    } else if (event.target.matches('.btn-add-favorite')) {
+      addFavoriteItem(event.target.dataset.id)
+    }
+  })
+  
+
+
+  changList.addEventListener('click',(even) =>{
+    even.preventDefault();
+    if(even.target.matches('.fa-th')) {
+      viewMode = 'card'
+      getTotalPages(pageData)
+      getPageData(newpage, pageData)
+    }else if (even.target.matches('.fa-bars')) {
+      viewMode = 'list'
+      displayDataList(pageData)
+      getPageData(newpage, pageData)
+    }
+  })
+
+    // 分頁監聽 事件
+    pagination.addEventListener('click', event => {
+      // console.log(event.target.dataset.page)
+      newpage = event.target.dataset.page
+      if (event.target.tagName === 'A') {
+        getPageData(newpage)
+      }
+    })
+  
 
 
   searchForm.addEventListener('submit', event => {
 
-    event.preventDefault()
-    const keyword = searchInput.value.trim().toLowerCase()
+    event.preventDefault();
+    const keyword = searchInput.value.trim().toLowerCase();
 
-    let filteredMovies = [] //搜尋清單
+    //搜尋清單
+    let filteredMovies = []; 
 
-    // if (!keyword.length) {
-    //   return alert('請輸入有效字串！')
-    // }
 
     filteredMovies = data.filter((movie) =>
       movie.title.toLowerCase().includes(keyword)
@@ -39,43 +94,19 @@
     }
     displayDataList(filteredMovies)
 
+    pageData = results
+
     // console.log(results)
     getTotalPages(results)
     getPageData(1, results)
   })
 
 
-  //電影清單
-  const dataPanel = document.getElementById('data-panel')
-
-  axios.get(INDEX_URL)
-    .then((response) => {
-      data.push(...response.data.results)
-      getTotalPages(data)
-      //displayDataList(data)
-      getPageData(1, data)
-    })
-    // 有錯誤時印出
-    .catch((err) => console.log(err))
 
 
 
-  // 分頁監聽 事件
-  pagination.addEventListener('click', event => {
-    console.log(event.target.dataset.page)
-    if (event.target.tagName === 'A') {
-      getPageData(event.target.dataset.page)
-    }
-  })
 
-  //監聽按鈕 事件
-  dataPanel.addEventListener('click', (event) => {
-    if (event.target.matches('.btn-show-movie')) {
-      showMovie(event.target.dataset.id)
-    } else if (event.target.matches('.btn-add-favorite')) {
-      addFavoriteItem(event.target.dataset.id)
-    }
-  })
+  
 
 
   //分頁方法
@@ -118,23 +149,39 @@
   function displayDataList(data) {
     let htmlContent = ''
     data.forEach(function (item, index) {
-      htmlContent += `
-      <div class="col-sm-3">
-        <div class="card mb-2">
-          <img class="card-img-top " src="${POSTER_URL}${item.image}" alt="Card image cap">
-          <div class="card-body movie-item-body">
-            <h6 class="card-title">${item.title}</h5>
+      if(viewMode === 'card') {
+        htmlContent += `
+        <div class="col-sm-3 mb-3">
+          <div class="card mb-2 h-100">
+            <img class="card-img-top " src="${POSTER_URL}${item.image}" alt="Card image cap">
+            <div class="card-body movie-item-body">
+              <h6 class="card-title">${item.title}</h5>
+            </div>
+            <div class="modal-footer justify-content-center">
+            <button class="btn btn-primary btn-show-movie" data-toggle="modal" data-target="#show-movie-modal" data-id="${item.id}">More</button>
+            <button type="button" class="btn btn-outline-success btn-add-favorite" data-id="${item.id}">+</button>
           </div>
-          <div class="modal-footer justify-content-center">
-          <button class="btn btn-primary btn-show-movie" data-toggle="modal" data-target="#show-movie-modal" data-id="${item.id}">More</button>
-          <button type="button" class="btn btn-success btn-add-favorite" data-id="${item.id}">+</button>
+          </div>
         </div>
-        </div>
-      </div>
-    `
+      `
+      dataPanel.innerHTML = htmlContent
+      }else if (viewMode === 'list') {
+
+        htmlContent += `
+        <div class="col-6">${item.title}</div>
+            <div class="col-6 text-right mb-2">
+              <button class="btn btn-primary btn-show-movie" data-toggle="modal" data-target="#show-movie-modal" data-id="${item.id}">More</button>
+              <button class="btn btn-outline-success btn-add-favorite" data-id="${item.id}">+</button>
+            </div>
+          </div>
+          </hr>
+      `
+      dataPanel.innerHTML = htmlContent
+      }
     })
-    dataPanel.innerHTML = htmlContent
+    
   }
+
 
   function showMovie(id) {
     // get elements
